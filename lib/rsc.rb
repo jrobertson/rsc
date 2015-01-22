@@ -2,26 +2,25 @@
 
 # file: rsc.rb
 
-require 'rexml/document'
 require 'open-uri'
 require 'drb'
+require 'rexle'
 
 
 class RSC
   
   class Package
-    include REXML
-
+    
     def initialize(drb_obj, parent_url, package)
 
       @obj = drb_obj
 
       @url = File.join(parent_url, package + '.rsf')
-      doc = Document.new(open(@url, 'UserAgent' => 'ClientRscript'){|x| x.read})
-      a = XPath.match(doc.root, 'job/attribute::id')
-
+      doc = Rexle.new open(@url, 'UserAgent' => 'ClientRscript').read
+      a = doc.root.xpath 'job/attribute::id'
+      
       a.each do |attr|
-        method_name = attr.value.to_s.gsub('-','_') 
+        method_name = attr.gsub('-','_') 
         method = "def %s(*args); run_job('%s', args) ; end" % \
                                                             ([method_name] * 2)
         self.instance_eval(method)

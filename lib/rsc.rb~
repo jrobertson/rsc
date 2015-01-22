@@ -1,105 +1,57 @@
-require 'open-uri'
-require 'cgi'
+#!/usr/bin/env ruby
+
+# file: rsc.rb
+
 require 'rexml/document'
+require 'open-uri'
+require 'drb'
 
-class Rsc
-  include REXML
 
-  attr_reader :doc, :result, :text   
-  attr_accessor :package
+class RSC
   
-  def initialize(opts={})        
-    
-    o = {:hostname => 'rscript.heroku.com', :package => ''}.merge(opts)
-    @hostname = o[:hostname]
-    @package = o[:package]
-    
-    if @package.length > 0 then
-      jobs_to_methods(@package)    
-      init_content_types
-    end   
+  class Package
+    include REXML
 
-  end
-  
-  def package=(s)
-    if s then
-      @package = s
-      jobs_to_methods(@package)    
-      init_content_types
-    end
-  end
-  
-  private
-  
-  def jobs_to_methods(package)
-    #url = "http://rorbuilder.info/r/heroku/%s.rsf" % package
-    url = "http://%s/source/%s" % [@hostname, package]
-    puts 'url : ' + url
-    doc = Document.new(open(url, 'UserAgent' => 'ClientRscript').read)
-    a = XPath.match(doc.root, 'job/attribute::id')
-    a.each do |attr|
-      method_name = attr.value.to_s.gsub('-','_')
-      method = "def %s(param={}); query_method('%s', param); end" % [method_name, method_name]
-      self.instance_eval(method)
-    end
-  end  
-  
-  def init_content_types  
-  
-    @return_type = {}
-    
-    xmlproc = Proc.new {
-      @doc = Document.new(@result.sub(/xmlns=["']http:\/\/www.w3.org\/1999\/xhtml["']/,''))
-      summary_node = XPath.match(@doc.root, 'summary/*')
-      if summary_node then
-        summary_node.each do |node|
-    
-        if node.cdatas.length > 0 then
-          if node.cdatas.length == 1 then
-            content =  node.cdatas.join.strip
-          else
-            if node.elements["@value='methods'"] then
-            
-            else
-              content = node.cdatas.map {|x| x.to_s[/^\{.*\}$/] ? eval(x.to_s) : x.to_s}
-            end
-            
-          end
-        else
-          content = node.text.to_s.gsub(/"/,'\"').gsub(/#/,'\#')
-        end
+    def initialize(drb_obj, parent_url, package)
 
-        
-method =<<EOF
-def #{node.name}()
-  #{content}
-end
-EOF
-          self.instance_eval(method)
-        end
-        records = XPath.match(@doc.root, 'records/*/text()')
-        method = "def %s(); %s; end" % [@doc.root.name, records.inspect] if records      
+      @obj = drb_obj
+
+      @url = File.join(parent_url, package + '.rsf')
+      doc = Document.new(open(@url, 'UserAgent' => 'ClientRscript'){|x| x.read})
+      a = XPath.match(doc.root, 'job/attribute::id')
+
+      a.each do |attr|
+        method_name = attr.value.to_s.gsub('-','_') 
+        method = "def %s(*args); run_job('%s', args) ; end" % \
+                                                            ([method_name] * 2)
         self.instance_eval(method)
       end
-    }
+
+    end
+
+    private
     
-    textproc = Proc.new {@text = @result}  
-    @return_type['text/plain'] = textproc
-    @return_type['text/html'] = textproc
-    @return_type['text/xml'] = xmlproc
-    @return_type['application/xml'] = xmlproc
-    @return_type['application/rss+xml'] = xmlproc
-    
+    def run_job(method_name, *args)
+      
+      args.flatten!(1)
+      params = args.pop if args.find {|x| x.is_a? Hash}
+      a = ['//job:' + method_name, @url, args].flatten(1)
+      params ? @obj.run(a, params) : @obj.run(a)     
+    end
+
   end
+
+  def initialize(drb_hostname='rse', parent_url)
+    
+    @parent_url = parent_url
+    DRb.start_service
+    @obj = DRbObject.new(nil, "druby://#{drb_hostname}:61000")
+  end
+
+  private
   
-  def query_method(method, params={})
-    base_url = "http://#{@hostname}/do/#{@package}/"
-    param_list = params.to_a.map{|param, value| "%s=%s" % [param, CGI.escape(value)]}.join('&')
-    url = "%s%s?%s" % [base_url, method.gsub('_','-'), param_list]
-    response = open(url, 'UserAgent' => 'RScriptClient')    
-    @result = response.read
-    @return_type[response.content_type].call
-    return self
+  def method_missing(method_name, *args)
+    Package.new @obj, @parent_url, method_name.to_s
   end
   
 end

@@ -46,6 +46,10 @@ class RSC
     DRb.start_service
     @obj = DRbObject.new(nil, "druby://#{drb_hostname}:61000")
   end
+  
+  def run_job(package, job, params={}, *qargs)
+    @obj.run_job(package, job, params, qargs)
+  end
 
   private
   

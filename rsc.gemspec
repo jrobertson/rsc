@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'rsc'
-  s.version = '0.2.0'
+  s.version = '0.2.1'
   s.summary = 'Objectifies remote calls to RSF packages and jobs which are run through a DRb server'
   s.authors = ['James Robertson']
   s.description = 'formerly known as rcscript-client'

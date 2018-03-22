@@ -51,7 +51,7 @@ class RSC
     
   end
 
-  def delete()
+  def delete(s=nil)
     s ? run_uri(s, :delete) :  @obj.delete
   end
   
@@ -59,12 +59,12 @@ class RSC
     s ? run_uri(s, :get) :  @obj.get
   end
   
-  def post(s=nil)
-    s ? run_uri(s, :post) :  @obj.post
+  def post(s=nil, val=nil)
+    s ? run_uri(s, :post, value: val) :  @obj.post
   end
 
   def put(s)
-    s ? run_uri(s, :put) :  @obj.put
+    s ? run_uri(s, :put, value: val) :  @obj.put
   end
   
   
@@ -118,11 +118,16 @@ class RSC
     [host, package, job, args, params]
   end
   
-  def run_uri(s, type=:get)
+  def run_uri(s, type=:get, value: nil)
     
     host, package, job, args, params = parse_uri(s)
     drb_start host
     @obj.type = type
+    
+    if value then
+      params ||= {}      
+      params.merge!(value.is_a?(Hash) ? value : {value: value}) 
+    end
     
     @obj.run_job(package, job, params, args)  
     

@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'rsc'
-  s.version = '0.3.1'
+  s.version = '0.3.2'
   s.summary = 'Objectifies remote calls to RSF packages and jobs which ' + 
       'are run through a DRb server'
   s.authors = ['James Robertson']

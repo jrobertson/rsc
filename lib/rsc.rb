@@ -40,28 +40,33 @@ class RSC
 
   end
 
-  def initialize(drb_hostname='rse', parent_url)
+  def initialize(drb_hostname='rse', parent_url=nil, port: '61000')
     
-    @parent_url = parent_url
-    DRb.start_service
-    @obj = DRbObject.new(nil, "druby://#{drb_hostname}:61000")
+    @port = port
+    
+    if parent_url then
+      @parent_url = parent_url
+      drb_start(drb_hostname)
+    end
+    
   end
 
   def delete()
-    @obj.delete
-  end  
+    s ? run_uri(s, :delete) :  @obj.delete
+  end
   
-  def get()
-    @obj.get
+  def get(s=nil)
+    s ? run_uri(s, :get) :  @obj.get
+  end
+  
+  def post(s=nil)
+    s ? run_uri(s, :post) :  @obj.post
   end
 
-  def put()
-    @obj.put
-  end  
-  
-  def post()
-    @obj.post
+  def put(s)
+    s ? run_uri(s, :put) :  @obj.put
   end
+  
   
   def run_job(package, job, params={}, *qargs, package_path: nil)
     @obj.run_job(package, job, params, qargs, package_path)
@@ -69,8 +74,57 @@ class RSC
 
   private
   
+  def drb_start(host)
+    DRb.start_service
+    @obj = DRbObject.new(nil, "druby://#{host}:#{@port}")    
+  end
+  
   def method_missing(method_name, *args)
     Package.new @obj, @parent_url, method_name.to_s
   end
   
+  def parse_uri(s)
+    
+    protocol, _, host, package, raw_job, remaining = s.split('/',6)
+    
+    if remaining then
+      
+      job = raw_job
+      # split on the 1st question mark
+      raw_args, raw_params = if remaining =~ /\?/ then
+        remaining.split('?',2)
+      else
+        remaining
+      end
+      
+    elsif raw_job =~ /\?/
+      job, raw_params = raw_job.split('?',2)
+    else
+      job = raw_job
+    end
+    
+    if raw_args or raw_params then
+      args = raw_args.split('/') if raw_args
+      
+      if raw_params then
+        params = raw_params.split('&').inject({}) do |r,x| 
+          k, v = x.split('=')
+          v ? r.merge(k[/\w+$/].to_sym => URI.unescape(v)) : r
+        end          
+      end
+
+    end    
+    
+    [host, package, job, args, params]
+  end
+  
+  def run_uri(s, type=:get)
+    
+    host, package, job, args, params = parse_uri(s)
+    drb_start host
+    @obj.type = type
+    
+    @obj.run_job(package, job, params, args)  
+    
+  end
 end

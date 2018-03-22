@@ -20,7 +20,7 @@ class RSC
       a = doc.root.xpath 'job/attribute::id'
       
       a.each do |attr|
-        method_name = attr.gsub('-','_') 
+        method_name = attr.value.gsub('-','_') 
         method = "def %s(*args); run_job('%s', args) ; end" % \
                                                             ([method_name] * 2)
         self.instance_eval(method)
@@ -46,9 +46,25 @@ class RSC
     DRb.start_service
     @obj = DRbObject.new(nil, "druby://#{drb_hostname}:61000")
   end
+
+  def delete()
+    @obj.delete
+  end  
   
-  def run_job(package, job, params={}, *qargs)
-    @obj.run_job(package, job, params, qargs)
+  def get()
+    @obj.get
+  end
+
+  def put()
+    @obj.put
+  end  
+  
+  def post()
+    @obj.post
+  end
+  
+  def run_job(package, job, params={}, *qargs, package_path: nil)
+    @obj.run_job(package, job, params, qargs, package_path)
   end
 
   private

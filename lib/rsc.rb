@@ -7,6 +7,14 @@ require 'drb'
 require 'rexle'
 
 
+class Rse
+  
+  def self.call(x)
+    RSC.new.get(x)
+  end
+  
+end
+
 class RSC
   
   class Package

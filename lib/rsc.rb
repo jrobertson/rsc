@@ -9,9 +9,11 @@ require 'rexle'
 
 class Rse
   
-  def self.call(x)
-    RSC.new.get(x)
-  end
+  def self.call(x)        RSC.new.get(x)        end  
+  def self.get(x)         RSC.new.get(x)        end
+  def self.post(x, val)   RSC.new.post(x, val)  end  
+  def self.delete(x)      RSC.new.delete(x)     end
+  def self.put(x, val)    RSC.new.put(x, val)   end      
   
 end
 
@@ -28,10 +30,11 @@ class RSC
       a = doc.root.xpath 'job/attribute::id'
       
       a.each do |attr|
-        method_name = attr.value.gsub('-','_') 
+        method_name = attr.value.gsub('-','_')         
         method = "def %s(*args); run_job('%s', args) ; end" % \
                                                             ([method_name] * 2)
-        self.instance_eval(method)
+        self.instance_eval(method)        
+        
       end
 
     end
@@ -71,7 +74,7 @@ class RSC
     s ? run_uri(s, :post, value: val) :  @obj.post
   end
 
-  def put(s)
+  def put(s=nil, val=nil)
     s ? run_uri(s, :put, value: val) :  @obj.put
   end
   

@@ -91,7 +91,13 @@ class RSC
   end
   
   def method_missing(method_name, *args)
-    Package.new @obj, @parent_url, method_name.to_s
+    
+    begin
+      Package.new @obj, @parent_url, method_name.to_s
+    rescue
+      # nil will be returned if there is no package by that name
+    end
+    
   end
   
   def parse_uri(s)

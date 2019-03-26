@@ -18,47 +18,37 @@ class Rse
 end
 
 class RSC
+  using ColouredText
   
   class Package
+    using ColouredText
     
-    def initialize(drb_obj, parent_url, package)
+    def initialize(drb_obj, package, debug: false)
+      
+      @debug = debug
 
       @obj = drb_obj
+      drb_obj.package_methods(package).each do |method_name|
+        
+        puts ('creating method ' + method_name).info if @debug
 
-      @url = File.join(parent_url, package + '.rsf')
-      doc = Rexle.new open(@url, 'UserAgent' => 'ClientRscript').read
-      a = doc.root.xpath 'job/attribute::id'
-      
-      a.each do |attr|
-        method_name = attr.value.gsub('-','_')         
-        method = "def %s(*args); run_job('%s', args) ; end" % \
-                                                            ([method_name] * 2)
-        self.instance_eval(method)        
+        methodx = "
+      def %s(*args)
+        @obj.run_job('%s','%s', args)
+      end" % [method_name, package, method_name]
+        self.instance_eval(methodx)        
         
       end
 
     end
 
-    private
-    
-    def run_job(method_name, *args)
-      
-      args.flatten!(1)
-      params = args.pop if args.find {|x| x.is_a? Hash}
-      a = ['//job:' + method_name, @url, args].flatten(1)
-      params ? @obj.run(a, params) : @obj.run(a)     
-    end
-
   end
 
-  def initialize(drb_hostname='rse', parent_url=nil, port: '61000')
+  def initialize(drb_hostname='rse', port: '61000', debug: false)
     
-    @port = port
+    @port, @debug = port, debug
     
-    if parent_url then
-      @parent_url = parent_url
-      drb_start(drb_hostname)
-    end
+    drb_start(drb_hostname)
     
   end
 
@@ -91,9 +81,14 @@ class RSC
   end
   
   def method_missing(method_name, *args)
+
+    if @debug then
+      puts 'method_missing'.info 
+      puts ('method_name: ' + method_name.inspect).debug
+    end
     
     begin
-      Package.new @obj, @parent_url, method_name.to_s
+      Package.new @obj, method_name.to_s, debug: @debug
     rescue
       # nil will be returned if there is no package by that name
     end

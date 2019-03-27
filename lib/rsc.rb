@@ -33,8 +33,8 @@ class RSC
         puts ('creating method ' + method_name).info if @debug
 
         methodx = "
-      def %s(*args)
-        @obj.run_job('%s','%s', args)
+      def %s(*args, params: {})
+        @obj.run_job('%s','%s', params, args)
       end" % [method_name, package, method_name]
         self.instance_eval(methodx)        
         

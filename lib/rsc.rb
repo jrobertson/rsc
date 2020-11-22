@@ -7,7 +7,7 @@ require 'drb'
 require 'rexle'
 
 
-class Rse
+class RseClient
   
   def self.call(x)        RSC.new.get(x)        end  
   def self.get(x)         RSC.new.get(x)        end
